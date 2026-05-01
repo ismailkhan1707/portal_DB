@@ -1,0 +1,112 @@
+{% extends 'base.html' %}
+{% block content %}
+
+<div class="row justify-content-center">
+  <div class="col-md-6">
+    <div class="card shadow">
+      <div class="card-header bg-info text-white">
+        <h4 class="mb-0">👤 Add Library Member</h4>
+      </div>
+      <div class="card-body p-4">
+
+        <p class="text-muted">
+          Select an existing student or faculty member to register
+          them in the library system.
+        </p>
+
+        <form method="POST">
+
+          <!-- Step 1: Pick type -->
+          <div class="mb-3">
+            <label class="form-label">
+              Member Type <span class="text-danger">*</span>
+            </label>
+            <select name="user_type" id="user_type"
+                    class="form-select" onchange="showDropdown()" required>
+              <option value="">-- Select Type --</option>
+              <option value="student">Student</option>
+              <option value="faculty">Faculty</option>
+            </select>
+          </div>
+
+          <!-- Student dropdown -->
+          <div class="mb-3" id="student_div" style="display:none;">
+            <label class="form-label">Select Student</label>
+            <select name="user_id" id="student_select"
+                    class="form-select" disabled>
+                    <!-- disabled by default so it doesn't submit when hidden -->
+              <option value="">-- Choose Student --</option>
+              {% for s in students %}
+                <option value="{{ s[0] }}">
+                  {{ s[1] }} — {{ s[3] }} ({{ s[2] }})
+                </option>
+              {% endfor %}
+            </select>
+            {% if not students %}
+              <div class="form-text text-danger">
+                No students registered yet.
+              </div>
+            {% endif %}
+          </div>
+
+          <!-- Faculty dropdown -->
+          <div class="mb-3" id="faculty_div" style="display:none;">
+            <label class="form-label">Select Faculty</label>
+            <select name="user_id" id="faculty_select"
+                    class="form-select" disabled>
+                    <!-- disabled by default so it doesn't submit when hidden -->
+              <option value="">-- Choose Faculty --</option>
+              {% for f in faculty_list %}
+                <option value="{{ f[0] }}">
+                  {{ f[1] }} — {{ f[3] }} ({{ f[2] }})
+                </option>
+              {% endfor %}
+            </select>
+            {% if not faculty_list %}
+              <div class="form-text text-danger">
+                No faculty registered yet.
+              </div>
+            {% endif %}
+          </div>
+
+          <div class="d-flex gap-2">
+            <button type="submit" class="btn btn-info text-white">
+              ✅ Add as Member
+            </button>
+            <a href="/members" class="btn btn-outline-secondary">Cancel</a>
+          </div>
+
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+function showDropdown() {
+    const type = document.getElementById('user_type').value;
+
+    const studentDiv    = document.getElementById('student_div');
+    const facultyDiv    = document.getElementById('faculty_div');
+    const studentSelect = document.getElementById('student_select');
+    const facultySelect = document.getElementById('faculty_select');
+
+    // Hide both and disable both first
+    studentDiv.style.display = 'none';
+    facultyDiv.style.display = 'none';
+    studentSelect.disabled = true;
+    facultySelect.disabled = true;
+
+    // Show and ENABLE only the correct one
+    if (type === 'student') {
+        studentDiv.style.display = 'block';
+        studentSelect.disabled = false;
+        // disabled=false means this one WILL submit its value
+    } else if (type === 'faculty') {
+        facultyDiv.style.display = 'block';
+        facultySelect.disabled = false;
+    }
+}
+</script>
+
+{% endblock %}

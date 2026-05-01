@@ -529,6 +529,153 @@ def delete_book(book_id):
 
         return render_template('delete_book.html', book=book)
 
+# ═════════════════════════════════════════════════════════════
+# STEP 3 — MEMBER MANAGEMENT
+# ═════════════════════════════════════════════════════════════
+
+# ─────────────────────────────────────────────────────────────
+# ROUTE: View All Members
+# ─────────────────────────────────────────────────────────────
+@app.route('/members')
+def view_members():
+    if not is_librarian():
+        flash('Only librarians can manage members.', 'danger')
+        return redirect(url_for('login'))
+
+    cur = mysql.connection.cursor()
+
+    # JOIN fetches member info combined with their actual details
+    # from either students or faculty table using UNION
+    # UNION combines two SELECT results into one list
+    cur.execute("""
+        SELECT
+            lm.id,
+            lm.user_type,
+            lm.user_id,
+            s.full_name,
+            s.email,
+            s.student_id AS ref_id,
+            lm.member_since
+        FROM library_members lm
+        JOIN students s ON lm.user_id = s.id AND lm.user_type = 'student'
+
+        UNION
+
+        SELECT
+            lm.id,
+            lm.user_type,
+            lm.user_id,
+            f.full_name,
+            f.email,
+            f.employee_id AS ref_id,
+            lm.member_since
+        FROM library_members lm
+        JOIN faculty f ON lm.user_id = f.id AND lm.user_type = 'faculty'
+
+        ORDER BY full_name
+    """)
+    members = cur.fetchall()
+    cur.close()
+
+    return render_template('view_members.html', members=members)
+
+
+# ─────────────────────────────────────────────────────────────
+# ROUTE: Add Member
+# ─────────────────────────────────────────────────────────────
+@app.route('/members/add', methods=['GET', 'POST'])
+def add_member():
+    if not is_librarian():
+        flash('Only librarians can add members.', 'danger')
+        return redirect(url_for('login'))
+
+    cur = mysql.connection.cursor()
+
+    # Load all students and faculty for the dropdowns
+    cur.execute("SELECT id, full_name, email, student_id FROM students ORDER BY full_name")
+    students = cur.fetchall()
+
+    cur.execute("SELECT id, full_name, email, employee_id FROM faculty ORDER BY full_name")
+    faculty_list = cur.fetchall()
+
+    if request.method == 'POST':
+        user_type = request.form['user_type']  # 'student' or 'faculty'
+        user_id   = request.form['user_id']    # the id from their table
+
+        # Validation
+        if not user_type or not user_id:
+            flash('Please select a user type and a person.', 'danger')
+            return render_template('add_member.html',
+                                   students=students,
+                                   faculty_list=faculty_list)
+
+        try:
+            cur.execute("""
+                INSERT INTO library_members (user_id, user_type)
+                VALUES (%s, %s)
+            """, (user_id, user_type))
+            mysql.connection.commit()
+            flash('Member added to library successfully!', 'success')
+            return redirect(url_for('view_members'))
+        except:
+            # UNIQUE constraint triggers if same person added twice
+            flash('This person is already a library member.', 'danger')
+        finally:
+            cur.close()
+
+    cur.close()
+    return render_template('add_member.html',
+                           students=students,
+                           faculty_list=faculty_list)
+
+
+# ─────────────────────────────────────────────────────────────
+# ROUTE: Remove Member
+# ─────────────────────────────────────────────────────────────
+@app.route('/members/delete/<int:member_id>', methods=['GET', 'POST'])
+def delete_member(member_id):
+    if not is_librarian():
+        flash('Only librarians can remove members.', 'danger')
+        return redirect(url_for('login'))
+
+    cur = mysql.connection.cursor()
+
+    if request.method == 'POST':
+        try:
+            cur.execute("DELETE FROM library_members WHERE id = %s", (member_id,))
+            mysql.connection.commit()
+            flash('Member removed from library.', 'success')
+        except:
+            flash('Cannot remove — this member has active borrowed books.', 'danger')
+        finally:
+            cur.close()
+        return redirect(url_for('view_members'))
+
+    else:
+        # GET — fetch member details to show on confirmation page
+        # We use a UNION again to get their name regardless of type
+        cur.execute("""
+            SELECT lm.id, lm.user_type, s.full_name, s.email
+            FROM library_members lm
+            JOIN students s ON lm.user_id = s.id AND lm.user_type = 'student'
+            WHERE lm.id = %s
+
+            UNION
+
+            SELECT lm.id, lm.user_type, f.full_name, f.email
+            FROM library_members lm
+            JOIN faculty f ON lm.user_id = f.id AND lm.user_type = 'faculty'
+            WHERE lm.id = %s
+        """, (member_id, member_id))
+        member = cur.fetchone()
+        cur.close()
+
+        if not member:
+            flash('Member not found.', 'danger')
+            return redirect(url_for('view_members'))
+
+        return render_template('delete_member.html', member=member)
+
 # ─────────────────────────────────────────────────────────────
 # START THE APP
 # ─────────────────────────────────────────────────────────────

@@ -1,0 +1,51 @@
+{% extends 'base.html' %}
+{% block content %}
+
+<div class="row justify-content-center mt-5">
+  <div class="col-md-5">
+    <div class="card shadow border-danger">
+      <div class="card-header bg-danger text-white">
+        <h4 class="mb-0">🗑️ Remove Library Member</h4>
+      </div>
+      <div class="card-body p-4 text-center">
+
+        <p class="fs-5">
+          Are you sure you want to remove this member from the library?
+        </p>
+
+        <!-- member tuple: [0]=id [1]=user_type [2]=full_name [3]=email -->
+        <div class="alert alert-warning">
+          <strong>{{ member[2] }}</strong><br>
+          <span class="text-muted">{{ member[3] }}</span><br>
+          <small>
+            Type:
+            {% if member[1] == 'student' %}
+              🎓 Student
+            {% else %}
+              👨‍🏫 Faculty
+            {% endif %}
+          </small>
+        </div>
+
+        <p class="text-danger fw-bold">
+          ⚠️ This only removes their library membership,
+          not their university account.
+        </p>
+
+        <div class="d-flex justify-content-center gap-3">
+          <form method="POST">
+            <button type="submit" class="btn btn-danger btn-lg px-4">
+              ✅ Yes, Remove
+            </button>
+          </form>
+          <a href="/members" class="btn btn-outline-secondary btn-lg px-4">
+            ❌ No, Cancel
+          </a>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
