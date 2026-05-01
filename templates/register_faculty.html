@@ -1,0 +1,59 @@
+{% extends 'base.html' %}
+{% block content %}
+
+<div class="row justify-content-center">
+  <div class="col-md-6">
+    <div class="card shadow">
+      <div class="card-header bg-secondary text-white">
+        <h4 class="mb-0">👨‍🏫 Faculty Registration</h4>
+      </div>
+      <div class="card-body p-4">
+        <form method="POST">
+          
+          <div class="mb-3">
+            <label class="form-label">Full Name</label>
+            <input type="text" name="full_name" class="form-control" required>
+          </div>
+          
+          <div class="mb-3">
+            <label class="form-label">Email Address</label>
+            <input type="email" name="email" class="form-control" required>
+          </div>
+          
+          <div class="mb-3">
+            <label class="form-label">Employee ID</label>
+            <input type="text" name="employee_id" class="form-control" 
+                   placeholder="e.g. FAC-2024-001" required>
+          </div>
+          
+          <div class="mb-3">
+            <label class="form-label">Title / Position</label>
+            <input type="text" name="title" class="form-control" 
+                   placeholder="e.g. Assistant Professor">
+          </div>
+          
+          <div class="mb-3">
+            <label class="form-label">Department</label>
+            <select name="department_id" class="form-select" required>
+              <option value="">-- Select Department --</option>
+              <!-- departments was passed from app.py as a list of (id, name) tuples -->
+              {% for dept in departments %}
+                <!-- dept[0] is the id, dept[1] is the name -->
+                <option value="{{ dept[0] }}">{{ dept[1] }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          
+          <div class="mb-3">
+            <label class="form-label">Password</label>
+            <input type="password" name="password" class="form-control" required>
+          </div>
+          
+          <button type="submit" class="btn btn-secondary w-100">Create Account</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}

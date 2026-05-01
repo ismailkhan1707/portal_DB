@@ -1,0 +1,61 @@
+{% extends 'base.html' %}
+{% block content %}
+
+<div class="row justify-content-center">
+  <div class="col-md-6">
+    <div class="card shadow">
+      <div class="card-header bg-success text-white">
+        <h4 class="mb-0">📝 Student Registration</h4>
+      </div>
+      <div class="card-body p-4">
+        <form method="POST">
+          
+          <div class="mb-3">
+            <label class="form-label">Full Name</label>
+            <input type="text" name="full_name" class="form-control" 
+                   placeholder="e.g. Ali Khan" required>
+          </div>
+          
+          <div class="mb-3">
+            <label class="form-label">Email Address</label>
+            <input type="email" name="email" class="form-control" 
+                   placeholder="ali@university.edu" required>
+          </div>
+          
+          <div class="mb-3">
+            <label class="form-label">Student ID</label>
+            <input type="text" name="student_id" class="form-control" 
+                   placeholder="e.g. STU-2024-001" required>
+          </div>
+          
+          <div class="mb-3">
+            <label class="form-label">Major / Program</label>
+            <input type="text" name="major" class="form-control" 
+                   placeholder="e.g. Computer Science">
+          </div>
+          <div class="mb-3">
+            <label class="form-label">CGPA</label>
+            <input type="number" name="gpa" class="form-control" 
+                    placeholder="e.g. 3.75" min="0" max="4" step="0.01">
+            <div class="form-text">Enter your CGPA on a 4.0 scale.</div>
+            </div>
+          
+          <div class="mb-3">
+            <label class="form-label">Password</label>
+            <input type="password" name="password" class="form-control" 
+                   placeholder="Choose a strong password" required>
+            <div class="form-text">Must be at least 8 characters.</div>
+          </div>
+          
+          <button type="submit" class="btn btn-success w-100">Create Account</button>
+        </form>
+        
+        <p class="text-center mt-3">
+          Already have an account? <a href="/login">Login here</a>
+        </p>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}

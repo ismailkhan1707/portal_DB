@@ -1,0 +1,60 @@
+{% extends 'base.html' %}
+{% block content %}
+
+<h2 class="mb-4">Welcome back, {{ student[1] }} 👋</h2>
+
+<!-- student is a tuple: (id, full_name, email, student_id, password, major, gpa, created_at) -->
+<!--                       [0]   [1]       [2]    [3]         [4]       [5]   [6]  [7]         -->
+
+<div class="row">
+  <!-- Profile Card -->
+  <div class="col-md-5">
+    <div class="card shadow-sm">
+      <div class="card-header bg-primary text-white fw-bold">
+        📋 My Profile
+      </div>
+      <div class="card-body">
+        <table class="table table-borderless">
+          <tr>
+            <td><strong>Name:</strong></td>
+            <td>{{ student[1] }}</td>
+          </tr>
+          <tr>
+            <td><strong>Email:</strong></td>
+            <td>{{ student[2] }}</td>
+          </tr>
+          <tr>
+            <td><strong>Student ID:</strong></td>
+            <td>{{ student[3] }}</td>
+          </tr>
+          <tr>
+            <td><strong>Major:</strong></td>
+            <!-- 'or' shows the second value if the first is empty/None -->
+            <td>{{ student[5] or 'Not set' }}</td>
+          </tr>
+          <tr>
+            <td><strong>GPA:</strong></td>
+            <td>{{ student[6] or 'Not set' }}</td>
+          </tr>
+          <tr>
+            <td><strong>Joined:</strong></td>
+            <td>{{ student[7] }}</td>
+          </tr>
+        </table>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Quick Info Card -->
+  <div class="col-md-4">
+    <div class="card shadow-sm bg-light">
+      <div class="card-body text-center p-4">
+        <h1 class="display-4">🎓</h1>
+        <h5>{{ student[5] or 'Undeclared Major' }}</h5>
+        <p class="text-muted">Current GPA: <strong>{{ student[6] or 'N/A' }}</strong></p>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}

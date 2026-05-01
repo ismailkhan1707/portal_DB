@@ -1,0 +1,50 @@
+{% extends 'base.html' %}
+{% block content %}
+
+<div class="row justify-content-center">
+  <div class="col-md-5">
+    <div class="card shadow">
+      <div class="card-body p-4">
+        <h3 class="text-center mb-4">🔐 Login</h3>
+        
+        <!-- method="POST" means the form data is sent to the server securely -->
+        <!-- action is empty, so it submits to the same URL (/login) -->
+        <form method="POST">
+          
+          <div class="mb-3">
+            <label class="form-label">Email Address</label>
+            <!-- name="email" must match request.form['email'] in app.py -->
+            <input type="email" name="email" class="form-control" 
+                   placeholder="you@example.com" required>
+          </div>
+          
+          <div class="mb-3">
+            <label class="form-label">Password</label>
+            <input type="password" name="password" class="form-control" 
+                   placeholder="Your password" required>
+          </div>
+          
+          <div class="mb-3">
+            <label class="form-label">I am a...</label>
+            <select name="role" class="form-select">
+              <!-- value="student" is what gets sent to Flask as request.form['role'] -->
+              <option value="student">Student</option>
+              <option value="faculty">Faculty Member</option>
+            </select>
+          </div>
+          
+          <button type="submit" class="btn btn-primary w-100">Login</button>
+        </form>
+        
+        <hr>
+        <p class="text-center text-muted">
+          Don't have an account? Register as:
+          <a href="/register/student">Student</a> or 
+          <a href="/register/faculty">Faculty</a>
+        </p>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}

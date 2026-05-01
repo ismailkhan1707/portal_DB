@@ -1,0 +1,51 @@
+{% extends 'base.html' %}
+{% block content %}
+
+<h2 class="mb-4">Faculty Dashboard — {{ faculty[1] }} 👨‍🏫</h2>
+
+<!-- Faculty profile -->
+<div class="card shadow-sm mb-4">
+  <div class="card-header bg-secondary text-white fw-bold">My Information</div>
+  <div class="card-body">
+    <p><strong>Name:</strong> {{ faculty[1] }}</p>
+    <p><strong>Email:</strong> {{ faculty[2] }}</p>
+    <p><strong>Employee ID:</strong> {{ faculty[3] }}</p>
+    <p><strong>Title:</strong> {{ faculty[6] or 'Not set' }}</p>
+  </div>
+</div>
+
+<!-- Student Records Table -->
+<div class="card shadow-sm">
+  <div class="card-header bg-primary text-white fw-bold">
+    📊 All Registered Students ({{ students|length }} total)
+  </div>
+  <div class="card-body">
+    <table class="table table-striped table-hover">
+      <thead class="table-dark">
+        <tr>
+          <th>Name</th>
+          <th>Student ID</th>
+          <th>Email</th>
+          <th>Major</th>
+          <th>GPA</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for s in students %}
+        <tr>
+          <td>{{ s[0] }}</td>  <!-- full_name -->
+          <td>{{ s[1] }}</td>  <!-- student_id -->
+          <td>{{ s[2] }}</td>  <!-- email -->
+          <td>{{ s[3] or '—' }}</td>  <!-- major -->
+          <td>{{ s[4] or '—' }}</td>  <!-- gpa -->
+        </tr>
+        {% else %}
+          <!-- This shows if no students are registered yet -->
+          <tr><td colspan="5" class="text-center text-muted">No students registered yet.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+{% endblock %}
