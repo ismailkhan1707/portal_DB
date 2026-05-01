@@ -1,0 +1,50 @@
+{% extends 'base.html' %}
+{% block content %}
+
+<div class="row justify-content-center">
+  <div class="col-md-6">
+    <div class="card shadow">
+      <div class="card-header bg-info text-white">
+        <h4 class="mb-0">📖 Librarian Registration</h4>
+      </div>
+      <div class="card-body p-4">
+        <form method="POST">
+
+          <div class="mb-3">
+            <label class="form-label">Full Name <span class="text-danger">*</span></label>
+            <input type="text" name="full_name" class="form-control"
+                   placeholder="e.g. Sara Ahmed" required>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label">Email Address <span class="text-danger">*</span></label>
+            <input type="email" name="email" class="form-control"
+                   placeholder="librarian@university.edu" required>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label">Librarian ID <span class="text-danger">*</span></label>
+            <input type="text" name="librarian_id" class="form-control"
+                   placeholder="e.g. LIB-2024-001" required>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label">Password <span class="text-danger">*</span></label>
+            <input type="password" name="password" class="form-control"
+                   placeholder="At least 6 characters" required>
+          </div>
+
+          <button type="submit" class="btn btn-info w-100 text-white">
+            Create Librarian Account
+          </button>
+        </form>
+
+        <p class="text-center mt-3 text-muted">
+          Already have an account? <a href="/login">Login here</a>
+        </p>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}

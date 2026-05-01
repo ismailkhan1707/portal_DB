@@ -25,12 +25,12 @@
           </div>
           
           <div class="mb-3">
-            <label class="form-label">I am a...</label>
-            <select name="role" class="form-select">
-              <!-- value="student" is what gets sent to Flask as request.form['role'] -->
-              <option value="student">Student</option>
-              <option value="faculty">Faculty Member</option>
-            </select>
+              <label class="form-label">I am a...</label>
+              <select name="role" class="form-select">
+                  <option value="student">Student</option>
+                  <option value="faculty">Faculty Member</option>
+                  <option value="librarian">Librarian</option>
+              </select>
           </div>
           
           <button type="submit" class="btn btn-primary w-100">Login</button>
@@ -38,9 +38,10 @@
         
         <hr>
         <p class="text-center text-muted">
-          Don't have an account? Register as:
-          <a href="/register/student">Student</a> or 
-          <a href="/register/faculty">Faculty</a>
+            Don't have an account? Register as:
+            <a href="/register/student">Student</a> |
+            <a href="/register/faculty">Faculty</a> |
+            <a href="/register/librarian">Librarian</a>
         </p>
       </div>
     </div>

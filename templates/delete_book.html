@@ -1,0 +1,41 @@
+{% extends 'base.html' %}
+{% block content %}
+
+<div class="row justify-content-center mt-5">
+  <div class="col-md-5">
+    <div class="card shadow border-danger">
+      <div class="card-header bg-danger text-white">
+        <h4 class="mb-0">🗑️ Confirm Book Deletion</h4>
+      </div>
+      <div class="card-body p-4 text-center">
+
+        <p class="fs-5">Are you sure you want to delete this book?</p>
+
+        <div class="alert alert-warning text-start">
+          <strong>{{ book[1] }}</strong><br>
+          <span class="text-muted">by {{ book[2] }}</span><br>
+          <small>ISBN: {{ book[4] or 'N/A' }}</small><br>
+          <small>Copies: {{ book[7] }}</small>
+        </div>
+
+        <p class="text-danger fw-bold">
+          ⚠️ This action cannot be undone.
+        </p>
+
+        <div class="d-flex justify-content-center gap-3">
+          <form method="POST">
+            <button type="submit" class="btn btn-danger btn-lg px-4">
+              ✅ Yes, Delete
+            </button>
+          </form>
+          <a href="/books" class="btn btn-outline-secondary btn-lg px-4">
+            ❌ No, Cancel
+          </a>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
