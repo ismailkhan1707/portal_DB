@@ -1,0 +1,140 @@
+{% extends 'base.html' %}
+{% block content %}
+
+<h2 class="mb-4">📤 Issue Book</h2>
+
+<!-- Issue Form -->
+<div class="card shadow-sm mb-4">
+  <div class="card-header bg-warning fw-bold">Issue a Book Directly</div>
+  <div class="card-body">
+    <form method="POST">
+      <div class="row">
+
+        <div class="col-md-6 mb-3">
+          <label class="form-label">Select Member <span class="text-danger">*</span></label>
+          <select name="member_id" class="form-select" required>
+            <option value="">-- Choose Member --</option>
+            {% for m in members %}
+              <!-- m[0]=id, m[1]=full_name, m[2]=ref_id, m[3]=type -->
+              <option value="{{ m[0] }}">
+                {{ m[1] }} ({{ m[3] }} — {{ m[2] }})
+              </option>
+            {% endfor %}
+          </select>
+          {% if not members %}
+            <div class="form-text text-danger">
+              No library members yet.
+              <a href="/members/add">Add a member first.</a>
+            </div>
+          {% endif %}
+        </div>
+
+        <div class="col-md-6 mb-3">
+          <label class="form-label">Select Book <span class="text-danger">*</span></label>
+          <select name="book_id" class="form-select" required>
+            <option value="">-- Choose Book --</option>
+            {% for b in books %}
+              <!-- b[0]=book_id, b[1]=title, b[2]=author, b[3]=available -->
+              <option value="{{ b[0] }}">
+                {{ b[1] }} by {{ b[2] }} ({{ b[3] }} left)
+              </option>
+            {% endfor %}
+          </select>
+          {% if not books %}
+            <div class="form-text text-danger">
+              No books available right now.
+            </div>
+          {% endif %}
+        </div>
+
+        <div class="col-md-6 mb-3">
+          <label class="form-label">Issue Date <span class="text-danger">*</span></label>
+          <input type="date" name="issue_date" class="form-control" required>
+        </div>
+
+        <div class="col-md-6 mb-3">
+          <label class="form-label">Due Date <span class="text-danger">*</span></label>
+          <input type="date" name="due_date" class="form-control" required>
+        </div>
+
+      </div>
+      <button type="submit" class="btn btn-warning fw-bold">📤 Issue Book</button>
+    </form>
+  </div>
+</div>
+
+<!-- Issued Books Table -->
+<div class="card shadow-sm">
+  <div class="card-header bg-primary text-white fw-bold">
+    📚 All Issued Books ({{ issued|length }} total)
+  </div>
+  <div class="card-body p-0">
+    <table class="table table-hover mb-0">
+      <thead class="table-dark">
+        <tr>
+          <th>#</th>
+          <th>Member</th>
+          <th>Type</th>
+          <th>Book</th>
+          <th>Issue Date</th>
+          <th>Due Date</th>
+          <th>Status</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for i in issued %}
+        <tr>
+          <!-- issued tuple:
+          [0]=id [1]=member_name [2]=user_type [3]=title
+          [4]=author [5]=issue_date [6]=due_date [7]=returned -->
+          <td>{{ i[0] }}</td>
+          <td><strong>{{ i[1] }}</strong></td>
+          <td>
+            {% if i[2] == 'student' %}
+              <span class="badge bg-primary">🎓 Student</span>
+            {% else %}
+              <span class="badge bg-secondary">👨‍🏫 Faculty</span>
+            {% endif %}
+          </td>
+          <td>{{ i[3] }}</td>
+          <td>{{ i[5] }}</td>
+          <td>
+            {% if not i[7] %}
+              <span class="text-danger fw-bold">{{ i[6] }}</span>
+            {% else %}
+              {{ i[6] }}
+            {% endif %}
+          </td>
+          <td>
+            {% if i[7] %}
+              <span class="badge bg-success">✅ Returned</span>
+            {% else %}
+              <span class="badge bg-warning text-dark">📤 Issued</span>
+            {% endif %}
+          </td>
+          <td>
+            {% if not i[7] %}
+              <a href="/issue/return/{{ i[0] }}"
+                 class="btn btn-sm btn-success"
+                 onclick="return confirm('Mark this book as returned?')">
+                 📥 Return
+              </a>
+            {% else %}
+              <span class="text-muted">—</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="8" class="text-center text-muted py-4">
+            No books have been issued yet.
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+{% endblock %}

@@ -676,6 +676,385 @@ def delete_member(member_id):
 
         return render_template('delete_member.html', member=member)
 
+# ═════════════════════════════════════════════════════════════
+# STEP 4 — ISSUE BOOK SYSTEM
+# ═════════════════════════════════════════════════════════════
+
+# ─────────────────────────────────────────────────────────────
+# HELPER: Get library_member id for logged in student/faculty
+# ─────────────────────────────────────────────────────────────
+def get_member_id():
+    # Checks if the currently logged in student or faculty
+    # is registered as a library member
+    # Returns their library_members.id or None if not a member
+    cur = mysql.connection.cursor()
+    cur.execute("""
+        SELECT id FROM library_members
+        WHERE user_id = %s AND user_type = %s
+    """, (session['user_id'], session['role']))
+    member = cur.fetchone()
+    cur.close()
+    return member[0] if member else None
+
+
+# ─────────────────────────────────────────────────────────────
+# ROUTE: Issue Book (Librarian directly issues to a member)
+# ─────────────────────────────────────────────────────────────
+@app.route('/issue', methods=['GET', 'POST'])
+def issue_book():
+    if not is_librarian():
+        flash('Only librarians can issue books directly.', 'danger')
+        return redirect(url_for('login'))
+
+    cur = mysql.connection.cursor()
+
+    if request.method == 'POST':
+        member_id  = request.form['member_id']
+        book_id    = request.form['book_id']
+        issue_date = request.form['issue_date']
+        due_date   = request.form['due_date']
+
+        # ── CORE LOGIC ────────────────────────────────────────
+
+        # Step 1: Check book exists
+        cur.execute("SELECT * FROM books WHERE book_id = %s", (book_id,))
+        book = cur.fetchone()
+        if not book:
+            flash('Book not found.', 'danger')
+            return redirect(url_for('issue_book'))
+
+        # Step 2: Check availability
+        if book[8] <= 0:
+            flash(f'Sorry, "{book[1]}" has no available copies.', 'danger')
+            return redirect(url_for('issue_book'))
+
+        # Step 3: Check member exists
+        cur.execute("SELECT * FROM library_members WHERE id = %s", (member_id,))
+        member = cur.fetchone()
+        if not member:
+            flash('Member not found.', 'danger')
+            return redirect(url_for('issue_book'))
+
+        # Step 4: Check due date is after issue date
+        if due_date <= issue_date:
+            flash('Due date must be after the issue date.', 'danger')
+            return redirect(url_for('issue_book'))
+
+        # Step 5: Insert issue record
+        cur.execute("""
+            INSERT INTO issued_books
+                (member_id, book_id, issue_date, due_date, issued_by)
+            VALUES (%s, %s, %s, %s, %s)
+        """, (member_id, book_id, issue_date, due_date, session['user_id']))
+
+        # Step 6: Reduce available count by 1
+        cur.execute("""
+            UPDATE books SET available = available - 1
+            WHERE book_id = %s
+        """, (book_id,))
+
+        mysql.connection.commit()
+        flash(f'Book "{book[1]}" issued successfully!', 'success')
+        cur.close()
+        return redirect(url_for('issue_book'))
+
+    # ── GET: Load page data ───────────────────────────────────
+
+    # Load all library members with their names for the dropdown
+    cur.execute("""
+        SELECT lm.id, s.full_name, s.student_id, 'student' as type
+        FROM library_members lm
+        JOIN students s ON lm.user_id = s.id AND lm.user_type = 'student'
+
+        UNION
+
+        SELECT lm.id, f.full_name, f.employee_id, 'faculty' as type
+        FROM library_members lm
+        JOIN faculty f ON lm.user_id = f.id AND lm.user_type = 'faculty'
+
+        ORDER BY full_name
+    """)
+    members = cur.fetchall()
+
+    # Only show books that have available copies
+    cur.execute("""
+        SELECT book_id, title, author, available
+        FROM books
+        WHERE available > 0
+        ORDER BY title
+    """)
+    books = cur.fetchall()
+
+    # Load all issued books with names using JOIN
+    cur.execute("""
+        SELECT
+            ib.id,
+            COALESCE(s.full_name, f.full_name) AS member_name,
+            lm.user_type,
+            b.title,
+            b.author,
+            ib.issue_date,
+            ib.due_date,
+            ib.returned
+        FROM issued_books ib
+        JOIN library_members lm ON ib.member_id = lm.id
+        LEFT JOIN students s ON lm.user_id = s.id AND lm.user_type = 'student'
+        LEFT JOIN faculty f ON lm.user_id = f.id AND lm.user_type = 'faculty'
+        JOIN books b ON ib.book_id = b.book_id
+        ORDER BY ib.created_at DESC
+    """)
+    # COALESCE returns the first non-null value
+    # So if student name is null, it uses faculty name
+    issued = cur.fetchall()
+
+    cur.close()
+    return render_template('issue_book.html',
+                           members=members,
+                           books=books,
+                           issued=issued)
+
+
+# ─────────────────────────────────────────────────────────────
+# ROUTE: Return a Book
+# ─────────────────────────────────────────────────────────────
+@app.route('/issue/return/<int:issue_id>')
+def return_book(issue_id):
+    if not is_librarian():
+        flash('Only librarians can process returns.', 'danger')
+        return redirect(url_for('login'))
+
+    cur = mysql.connection.cursor()
+
+    cur.execute("SELECT * FROM issued_books WHERE id = %s", (issue_id,))
+    record = cur.fetchone()
+    # record tuple:
+    # [0]=id [1]=member_id [2]=book_id [3]=issue_date
+    # [4]=due_date [5]=returned [6]=issued_by [7]=created_at
+
+    if not record:
+        flash('Issue record not found.', 'danger')
+    elif record[5]:
+        flash('This book has already been returned.', 'warning')
+    else:
+        # Mark as returned
+        cur.execute("""
+            UPDATE issued_books SET returned = TRUE
+            WHERE id = %s
+        """, (issue_id,))
+        # Add copy back to available count
+        cur.execute("""
+            UPDATE books SET available = available + 1
+            WHERE book_id = %s
+        """, (record[2],))
+        mysql.connection.commit()
+        flash('Book returned successfully!', 'success')
+
+    cur.close()
+    return redirect(url_for('issue_book'))
+
+
+# ─────────────────────────────────────────────────────────────
+# ROUTE: Borrow Request (Student/Faculty requests a book)
+# ─────────────────────────────────────────────────────────────
+@app.route('/borrow/request', methods=['GET', 'POST'])
+def borrow_request():
+    if not is_student() and not is_faculty():
+        flash('Please log in as a student or faculty.', 'danger')
+        return redirect(url_for('login'))
+
+    # Check they are a registered library member
+    member_id = get_member_id()
+    if not member_id:
+        flash('You are not registered as a library member. Please ask the librarian to add you.', 'warning')
+        return redirect(url_for('student_dashboard') if is_student() else url_for('faculty_dashboard'))
+
+    cur = mysql.connection.cursor()
+
+    if request.method == 'POST':
+        book_id      = request.form['book_id']
+        request_date = request.form['request_date']
+
+        # Check book availability
+        cur.execute("SELECT * FROM books WHERE book_id = %s", (book_id,))
+        book = cur.fetchone()
+
+        if not book:
+            flash('Book not found.', 'danger')
+            return redirect(url_for('borrow_request'))
+
+        if book[8] <= 0:
+            flash(f'Sorry, "{book[1]}" is currently not available.', 'danger')
+            return redirect(url_for('borrow_request'))
+
+        # Check if they already have a pending request for same book
+        cur.execute("""
+            SELECT id FROM borrow_requests
+            WHERE member_id = %s AND book_id = %s AND status = 'pending'
+        """, (member_id, book_id))
+        existing = cur.fetchone()
+
+        if existing:
+            flash('You already have a pending request for this book.', 'warning')
+            return redirect(url_for('borrow_request'))
+
+        # Insert the request
+        cur.execute("""
+            INSERT INTO borrow_requests (member_id, book_id, request_date)
+            VALUES (%s, %s, %s)
+        """, (member_id, book_id, request_date))
+        mysql.connection.commit()
+        flash('Borrow request submitted! The librarian will process it soon.', 'success')
+        cur.close()
+        return redirect(url_for('borrow_request'))
+
+    # Load available books for dropdown
+    cur.execute("""
+        SELECT book_id, title, author, available
+        FROM books WHERE available > 0
+        ORDER BY title
+    """)
+    books = cur.fetchall()
+
+    # Load this member's own requests
+    cur.execute("""
+        SELECT
+            br.id,
+            b.title,
+            b.author,
+            br.request_date,
+            br.status
+        FROM borrow_requests br
+        JOIN books b ON br.book_id = b.book_id
+        WHERE br.member_id = %s
+        ORDER BY br.created_at DESC
+    """, (member_id,))
+    my_requests = cur.fetchall()
+    cur.close()
+
+    return render_template('borrow_request.html',
+                           books=books,
+                           my_requests=my_requests)
+
+
+# ─────────────────────────────────────────────────────────────
+# ROUTE: Manage Borrow Requests (Librarian approves/rejects)
+# ─────────────────────────────────────────────────────────────
+@app.route('/borrow/manage')
+def manage_requests():
+    if not is_librarian():
+        flash('Only librarians can manage borrow requests.', 'danger')
+        return redirect(url_for('login'))
+
+    cur = mysql.connection.cursor()
+    cur.execute("""
+        SELECT
+            br.id,
+            COALESCE(s.full_name, f.full_name) AS member_name,
+            lm.user_type,
+            b.title,
+            b.author,
+            b.available,
+            br.request_date,
+            br.status
+        FROM borrow_requests br
+        JOIN library_members lm ON br.member_id = lm.id
+        LEFT JOIN students s ON lm.user_id = s.id AND lm.user_type = 'student'
+        LEFT JOIN faculty f ON lm.user_id = f.id AND lm.user_type = 'faculty'
+        JOIN books b ON br.book_id = b.book_id
+        ORDER BY
+            CASE br.status WHEN 'pending' THEN 1
+                           WHEN 'approved' THEN 2
+                           ELSE 3 END,
+            br.created_at DESC
+    """)
+    # Pending requests always show first, then approved, then rejected
+    requests = cur.fetchall()
+    cur.close()
+
+    return render_template('manage_requests.html', requests=requests)
+
+
+# ─────────────────────────────────────────────────────────────
+# ROUTE: Approve a Borrow Request
+# ─────────────────────────────────────────────────────────────
+@app.route('/borrow/approve/<int:request_id>')
+def approve_request(request_id):
+    if not is_librarian():
+        return redirect(url_for('login'))
+
+    cur = mysql.connection.cursor()
+
+    # Load the request
+    cur.execute("SELECT * FROM borrow_requests WHERE id = %s", (request_id,))
+    req = cur.fetchone()
+    # req tuple:
+    # [0]=id [1]=member_id [2]=book_id [3]=request_date [4]=status
+
+    if not req:
+        flash('Request not found.', 'danger')
+        return redirect(url_for('manage_requests'))
+
+    if req[4] != 'pending':
+        flash('This request has already been processed.', 'warning')
+        return redirect(url_for('manage_requests'))
+
+    # Check book is still available
+    cur.execute("SELECT * FROM books WHERE book_id = %s", (req[2],))
+    book = cur.fetchone()
+
+    if book[8] <= 0:
+        flash(f'Cannot approve — "{book[1]}" has no available copies.', 'danger')
+        return redirect(url_for('manage_requests'))
+
+    from datetime import date, timedelta
+    today    = date.today()
+    due_date = today + timedelta(days=14)
+    # Default 2 week loan period
+
+    # Create the issue record
+    cur.execute("""
+        INSERT INTO issued_books
+            (member_id, book_id, issue_date, due_date, issued_by)
+        VALUES (%s, %s, %s, %s, %s)
+    """, (req[1], req[2], today, due_date, session['user_id']))
+
+    # Reduce available count
+    cur.execute("""
+        UPDATE books SET available = available - 1
+        WHERE book_id = %s
+    """, (req[2],))
+
+    # Mark request as approved
+    cur.execute("""
+        UPDATE borrow_requests SET status = 'approved'
+        WHERE id = %s
+    """, (request_id,))
+
+    mysql.connection.commit()
+    flash(f'Request approved! "{book[1]}" issued for 14 days.', 'success')
+    cur.close()
+    return redirect(url_for('manage_requests'))
+
+
+# ─────────────────────────────────────────────────────────────
+# ROUTE: Reject a Borrow Request
+# ─────────────────────────────────────────────────────────────
+@app.route('/borrow/reject/<int:request_id>')
+def reject_request(request_id):
+    if not is_librarian():
+        return redirect(url_for('login'))
+
+    cur = mysql.connection.cursor()
+    cur.execute("""
+        UPDATE borrow_requests SET status = 'rejected'
+        WHERE id = %s AND status = 'pending'
+    """, (request_id,))
+    mysql.connection.commit()
+    cur.close()
+
+    flash('Request rejected.', 'info')
+    return redirect(url_for('manage_requests'))
+
 # ─────────────────────────────────────────────────────────────
 # START THE APP
 # ─────────────────────────────────────────────────────────────
