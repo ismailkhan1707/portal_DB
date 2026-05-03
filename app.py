@@ -1,6 +1,3 @@
-# ─────────────────────────────────────────────────────────────
-# IMPORTS — Loading the tools we need
-# ─────────────────────────────────────────────────────────────
 from flask import Flask, render_template, request, redirect, url_for, session, flash
 # Flask        — the main framework
 # render_template — loads an HTML file and sends it to the browser
@@ -21,17 +18,12 @@ from flask_bcrypt import Bcrypt
 # APP SETUP
 # ─────────────────────────────────────────────────────────────
 app = Flask(__name__)
-# Creates your Flask application
-# __name__ tells Flask where to find your project files
 
 app.config.from_object('config.Config')
-# Loads settings from config.py
 
 mysql = MySQL(app)
-# Connects MySQL to the app
 
 bcrypt = Bcrypt(app)
-# Connects Bcrypt to the app
 
 # Helper functions to check who is logged in
 def is_student():
@@ -48,20 +40,16 @@ def is_librarian():
 # ROUTE 1: Home Page
 # ─────────────────────────────────────────────────────────────
 @app.route('/')
-# The @app.route('/') is called a "decorator"
-# It tells Flask: "when someone visits the homepage (/), run this function"
+
 def index():
     return render_template('index.html')
-    # Loads and sends the index.html file to the browser
 
 
 # ─────────────────────────────────────────────────────────────
 # ROUTE 2: Student Registration
 # ─────────────────────────────────────────────────────────────
 @app.route('/register/student', methods=['GET', 'POST'])
-# methods=['GET', 'POST'] means this page handles two situations:
-# GET  = someone just visits the page (show the empty form)
-# POST = someone submitted the form (process the data)
+
 def register_student():
     if request.method == 'POST':
         # The form was submitted — read the values the user typed
@@ -71,40 +59,24 @@ def register_student():
         password   = request.form['password']
         major      = request.form['major']
 
-        # ADD this line after major = request.form['major']
         gpa = request.form.get('gpa') or None
-        # .get() is used instead of [] because gpa is optional
-        # 'or None' means if left empty, save it as NULL in database
 
-        # Encrypt the password before saving
-        # NEVER save plain text passwords in a database!
         hashed_pw = bcrypt.generate_password_hash(password).decode('utf-8')
-        # generate_password_hash turns "mypassword" into something like:
-        # "$2b$12$EixZaYVK1fsbw1ZfbX3OXePaWxn96p36WQoeG6Lruj3vjPGga31lW"
 
         # Connect to the database
         cur = mysql.connection.cursor()
-        # cursor() is like opening a channel to send SQL commands
 
         try:
-            # INSERT INTO adds a new row to the students table
-            # %s are placeholders — Flask fills them in safely
-            # (This prevents SQL injection attacks)
             cur.execute("""
                 INSERT INTO students (full_name, email, student_id, password, major, gpa)
                 VALUES (%s, %s, %s, %s, %s, %s)
             """, (full_name, email, student_id, hashed_pw, major, gpa))
             
             mysql.connection.commit()
-            # commit() actually saves the changes to the database
-            # Without this line, the INSERT would be lost!
 
             flash('Registration successful! Please log in.', 'success')
-            # flash() stores a message that shows up once on the next page
-            # 'success' is the category — used for green color in Bootstrap
 
             return redirect(url_for('login'))
-            # Send the user to the login page
 
         except Exception as e:
             # If something went wrong (e.g., duplicate email), show an error
@@ -112,9 +84,7 @@ def register_student():
 
         finally:
             cur.close()
-            # Always close the database connection when done
 
-    # If it's a GET request (page visit), just show the empty form
     return render_template('register_student.html')
 
 
@@ -123,12 +93,11 @@ def register_student():
 # ─────────────────────────────────────────────────────────────
 @app.route('/register/faculty', methods=['GET', 'POST'])
 def register_faculty():
-    # First, get the list of departments to show in a dropdown
+
     cur = mysql.connection.cursor()
     cur.execute("SELECT id, name FROM departments")
     departments = cur.fetchall()
-    # fetchall() returns all rows as a list of tuples:
-    # [(1, 'Computer Science'), (2, 'Mathematics'), ...]
+
     cur.close()
 
     if request.method == 'POST':
@@ -155,7 +124,6 @@ def register_faculty():
         finally:
             cur.close()
 
-    # Pass departments list to the HTML template
     return render_template('register_faculty.html', departments=departments)
 
 
@@ -171,7 +139,6 @@ def login():
 
         cur = mysql.connection.cursor()
 
-        # Query different table based on selected role
         if role == 'student':
             cur.execute("SELECT * FROM students WHERE email = %s", (email,))
         elif role == 'faculty':
@@ -186,7 +153,7 @@ def login():
         cur.close()
 
         if user and bcrypt.check_password_hash(user[4], password):
-            # Save login info in session
+
             session['user_id']   = user[0]
             session['user_name'] = user[1]
             session['role']      = role
@@ -214,12 +181,9 @@ def student_dashboard():
 
     cur = mysql.connection.cursor()
 
-    # Fetch student info
     cur.execute("SELECT * FROM students WHERE id = %s", (session['user_id'],))
     student = cur.fetchone()
 
-    # Fetch enrolled courses with full details
-    # NEW — uses d.name from departments table
     cur.execute("""
         SELECT
             e.id,
@@ -254,11 +218,9 @@ def faculty_dashboard():
 
     cur = mysql.connection.cursor()
 
-    # Fetch faculty info
     cur.execute("SELECT * FROM faculty WHERE id = %s", (session['user_id'],))
     faculty = cur.fetchone()
 
-    # Fetch faculty's courses with enrolled student count
     cur.execute("""
         SELECT
             c.id,
@@ -275,8 +237,7 @@ def faculty_dashboard():
         GROUP BY c.id
         ORDER BY c.course_name
     """, (session['user_id'],))
-    # COUNT(e.id) counts how many enrollments exist for each course
-    # LEFT JOIN means courses with 0 students still show up
+
     my_courses = cur.fetchall()
     cur.close()
 
@@ -305,7 +266,6 @@ def register_librarian():
         librarian_id = request.form['librarian_id']
         password     = request.form['password']
 
-        # Validate fields
         errors = []
         if not full_name.strip():
             errors.append('Full name is required.')
@@ -351,7 +311,6 @@ def librarian_dashboard():
 
     cur = mysql.connection.cursor()
 
-    # Fetch librarian info
     cur.execute("SELECT * FROM librarians WHERE id = %s", (session['user_id'],))
     librarian = cur.fetchone()
 
@@ -359,34 +318,26 @@ def librarian_dashboard():
 
     return render_template('librarian_dashboard.html', librarian=librarian)
 
-# ═════════════════════════════════════════════════════════════
-# STEP 2 — BOOK MANAGEMENT
-# ═════════════════════════════════════════════════════════════
-
 # ─────────────────────────────────────────────────────────────
 # ROUTE: View All Books + Search
 # ─────────────────────────────────────────────────────────────
 @app.route('/books')
 def view_books():
-    # Any logged in user can view books
+
     if 'user_id' not in session:
         flash('Please log in first.', 'danger')
         return redirect(url_for('login'))
 
-    # Get search and sort values from the URL
-    # e.g. /books?search=python&sort=author
     search = request.args.get('search', '')
     sort   = request.args.get('sort', 'title')
 
-    # Only allow these columns for sorting (security)
     if sort not in ['title', 'author', 'category']:
         sort = 'title'
 
     cur = mysql.connection.cursor()
 
     if search:
-        # % means "anything" in SQL
-        # So %python% matches "Learn Python", "Python Basics" etc.
+
         like  = f'%{search}%'
         query = f"""
             SELECT * FROM books
@@ -411,7 +362,7 @@ def view_books():
 # ─────────────────────────────────────────────────────────────
 @app.route('/books/add', methods=['GET', 'POST'])
 def add_book():
-    # Only librarians can add books
+
     if not is_librarian():
         flash('Only librarians can add books.', 'danger')
         return redirect(url_for('view_books'))
@@ -425,7 +376,6 @@ def add_book():
         year      = request.form['year'].strip()
         quantity  = request.form['quantity'].strip()
 
-        # ── Validation ───────────────────────────────────────
         errors = []
 
         if not title:
@@ -440,7 +390,7 @@ def add_book():
         if errors:
             for e in errors:
                 flash(e, 'danger')
-            # Send form data back so user doesn't retype everything
+
             return render_template('add_book.html', form_data=request.form)
         # ─────────────────────────────────────────────────────
 
@@ -454,8 +404,7 @@ def add_book():
                     (title, author, category, isbn, publisher, year, quantity, available)
                 VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
             """, (title, author, category, isbn, publisher, year, quantity, quantity))
-            # available = quantity when first added
-            # because all copies are available at the start
+
             mysql.connection.commit()
             flash(f'Book "{title}" added successfully!', 'success')
             return redirect(url_for('view_books'))
@@ -487,7 +436,6 @@ def edit_book(book_id):
         year      = request.form['year'].strip()
         quantity  = request.form['quantity'].strip()
 
-        # Validation
         errors = []
         if not title:
             errors.append('Book title is required.')
@@ -525,7 +473,7 @@ def edit_book(book_id):
             cur.close()
 
     else:
-        # GET — load current book data into the form
+
         cur.execute("SELECT * FROM books WHERE book_id = %s", (book_id,))
         book = cur.fetchone()
         cur.close()
@@ -560,7 +508,7 @@ def delete_book(book_id):
         return redirect(url_for('view_books'))
 
     else:
-        # GET — show confirmation page first
+
         cur.execute("SELECT * FROM books WHERE book_id = %s", (book_id,))
         book = cur.fetchone()
         cur.close()
@@ -570,10 +518,6 @@ def delete_book(book_id):
             return redirect(url_for('view_books'))
 
         return render_template('delete_book.html', book=book)
-
-# ═════════════════════════════════════════════════════════════
-# STEP 3 — MEMBER MANAGEMENT
-# ═════════════════════════════════════════════════════════════
 
 # ─────────────────────────────────────────────────────────────
 # ROUTE: View All Members
@@ -586,9 +530,6 @@ def view_members():
 
     cur = mysql.connection.cursor()
 
-    # JOIN fetches member info combined with their actual details
-    # from either students or faculty table using UNION
-    # UNION combines two SELECT results into one list
     cur.execute("""
         SELECT
             lm.id,
@@ -633,7 +574,6 @@ def add_member():
 
     cur = mysql.connection.cursor()
 
-    # Load all students and faculty for the dropdowns
     cur.execute("SELECT id, full_name, email, student_id FROM students ORDER BY full_name")
     students = cur.fetchall()
 
@@ -641,10 +581,9 @@ def add_member():
     faculty_list = cur.fetchall()
 
     if request.method == 'POST':
-        user_type = request.form['user_type']  # 'student' or 'faculty'
-        user_id   = request.form['user_id']    # the id from their table
+        user_type = request.form['user_type']  
+        user_id   = request.form['user_id']    
 
-        # Validation
         if not user_type or not user_id:
             flash('Please select a user type and a person.', 'danger')
             return render_template('add_member.html',
@@ -660,7 +599,7 @@ def add_member():
             flash('Member added to library successfully!', 'success')
             return redirect(url_for('view_members'))
         except:
-            # UNIQUE constraint triggers if same person added twice
+
             flash('This person is already a library member.', 'danger')
         finally:
             cur.close()
@@ -694,8 +633,7 @@ def delete_member(member_id):
         return redirect(url_for('view_members'))
 
     else:
-        # GET — fetch member details to show on confirmation page
-        # We use a UNION again to get their name regardless of type
+
         cur.execute("""
             SELECT lm.id, lm.user_type, s.full_name, s.email
             FROM library_members lm
@@ -718,17 +656,10 @@ def delete_member(member_id):
 
         return render_template('delete_member.html', member=member)
 
-# ═════════════════════════════════════════════════════════════
-# STEP 4 — ISSUE BOOK SYSTEM
-# ═════════════════════════════════════════════════════════════
 
-# ─────────────────────────────────────────────────────────────
 # HELPER: Get library_member id for logged in student/faculty
-# ─────────────────────────────────────────────────────────────
 def get_member_id():
-    # Checks if the currently logged in student or faculty
-    # is registered as a library member
-    # Returns their library_members.id or None if not a member
+
     cur = mysql.connection.cursor()
     cur.execute("""
         SELECT id FROM library_members
@@ -755,8 +686,6 @@ def issue_book():
         book_id    = request.form['book_id']
         issue_date = request.form['issue_date']
         due_date   = request.form['due_date']
-
-        # ── CORE LOGIC ────────────────────────────────────────
 
         # Step 1: Check book exists
         cur.execute("SELECT * FROM books WHERE book_id = %s", (book_id,))
@@ -800,9 +729,7 @@ def issue_book():
         cur.close()
         return redirect(url_for('issue_book'))
 
-    # ── GET: Load page data ───────────────────────────────────
 
-    # Load all library members with their names for the dropdown
     cur.execute("""
         SELECT lm.id, s.full_name, s.student_id, 'student' as type
         FROM library_members lm
@@ -818,7 +745,6 @@ def issue_book():
     """)
     members = cur.fetchall()
 
-    # Only show books that have available copies
     cur.execute("""
         SELECT book_id, title, author, available
         FROM books
@@ -827,7 +753,6 @@ def issue_book():
     """)
     books = cur.fetchall()
 
-    # Load all issued books with names using JOIN
     cur.execute("""
         SELECT
             ib.id,
@@ -845,8 +770,7 @@ def issue_book():
         JOIN books b ON ib.book_id = b.book_id
         ORDER BY ib.created_at DESC
     """)
-    # COALESCE returns the first non-null value
-    # So if student name is null, it uses faculty name
+
     issued = cur.fetchall()
 
     cur.close()
@@ -869,9 +793,6 @@ def return_book(issue_id):
 
     cur.execute("SELECT * FROM issued_books WHERE id = %s", (issue_id,))
     record = cur.fetchone()
-    # record tuple:
-    # [0]=id [1]=member_id [2]=book_id [3]=issue_date
-    # [4]=due_date [5]=returned [6]=issued_by [7]=created_at
 
     if not record:
         flash('Issue record not found.', 'danger')
@@ -1029,8 +950,7 @@ def approve_request(request_id):
     # Load the request
     cur.execute("SELECT * FROM borrow_requests WHERE id = %s", (request_id,))
     req = cur.fetchone()
-    # req tuple:
-    # [0]=id [1]=member_id [2]=book_id [3]=request_date [4]=status
+
 
     if not req:
         flash('Request not found.', 'danger')
@@ -1051,7 +971,7 @@ def approve_request(request_id):
     from datetime import date, timedelta
     today    = date.today()
     due_date = today + timedelta(days=14)
-    # Default 2 week loan period
+
 
     # Create the issue record
     cur.execute("""
@@ -1097,10 +1017,6 @@ def reject_request(request_id):
     flash('Request rejected.', 'info')
     return redirect(url_for('manage_requests'))
 
-# ═════════════════════════════════════════════════════════════
-# COURSE MANAGEMENT
-# ═════════════════════════════════════════════════════════════
-
 # ─────────────────────────────────────────────────────────────
 # ROUTE: View All Available Courses (for students to browse)
 # ─────────────────────────────────────────────────────────────
@@ -1129,8 +1045,6 @@ def view_courses():
     """)
     courses = cur.fetchall()
 
-    # If student, also get their enrolled course IDs
-    # so we can show which ones they already enrolled in
     enrolled_ids = []
     if is_student():
         cur.execute("""
@@ -1138,8 +1052,7 @@ def view_courses():
             WHERE student_id = %s
         """, (session['user_id'],))
         enrolled_ids = [row[0] for row in cur.fetchall()]
-        # This gives us a simple list like [1, 3, 5]
-        # so we can check "if course[0] in enrolled_ids"
+
 
     cur.close()
     return render_template('view_courses.html',
@@ -1204,8 +1117,6 @@ def add_course():
 
     cur = mysql.connection.cursor()
 
-    # Load departments FIRST before anything else
-    # so it's always available whether GET or POST
     cur.execute("SELECT id, name FROM departments ORDER BY name")
     departments = cur.fetchall()
 
@@ -1268,7 +1179,3 @@ def add_course():
 # ─────────────────────────────────────────────────────────────
 if __name__ == '__main__':
     app.run(debug=True)
-    # debug=True means:
-    # 1. The server auto-restarts when you save changes
-    # 2. You see detailed error messages in the browser
-    # (Turn debug=False before publishing your project!)
