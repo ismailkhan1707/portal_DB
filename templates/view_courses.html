@@ -1,0 +1,72 @@
+{% extends 'base.html' %}
+{% block content %}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2>📝 Available Courses</h2>
+    {% if session.role == 'faculty' %}
+        <a href="/courses/add" class="btn btn-success">➕ Add Course</a>
+    {% endif %}
+</div>
+
+<div class="card shadow-sm">
+  <div class="card-body p-0">
+    <table class="table table-striped table-hover mb-0">
+      <thead class="table-dark">
+        <tr>
+          <th>Code</th>
+          <th>Course Name</th>
+          <th>Faculty</th>
+          <th>Department</th>
+          <th>Credits</th>
+          <th>Semester</th>
+          {% if session.role == 'student' %}
+          <th>Action</th>
+          {% endif %}
+        </tr>
+      </thead>
+      <tbody>
+        {% for c in courses %}
+        <tr>
+          <!-- c tuple:
+          [0]=id [1]=course_code [2]=course_name [3]=faculty_name
+          [4]=department [5]=credit_hours [6]=semester -->
+          <td><span class="badge bg-primary">{{ c[1] }}</span></td>
+          <td><strong>{{ c[2] }}</strong></td>
+          <td>{{ c[3] }}</td>
+          <td>{{ c[4] or '—' }}</td>
+          <td>{{ c[5] }}</td>
+          <td>{{ c[6] or '—' }}</td>
+          {% if session.role == 'student' %}
+          <td>
+            {% if c[0] in enrolled_ids %}
+              <span class="badge bg-success me-1">✅ Enrolled</span>
+              <a href="/courses/drop/{{ c[0] }}"
+                 class="btn btn-sm btn-danger"
+                 onclick="return confirm('Drop this course?')">
+                 Drop
+              </a>
+            {% else %}
+              <a href="/courses/enroll/{{ c[0] }}"
+                 class="btn btn-sm btn-success">
+                 ➕ Enroll
+              </a>
+            {% endif %}
+          </td>
+          {% endif %}
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="7" class="text-center text-muted py-4">
+            No courses available yet.
+            {% if session.role == 'faculty' %}
+              <a href="/courses/add">Add the first one!</a>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+{% endblock %}

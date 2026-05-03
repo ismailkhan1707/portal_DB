@@ -1,0 +1,69 @@
+{% extends 'base.html' %}
+{% block content %}
+
+<div class="row justify-content-center">
+  <div class="col-md-6">
+    <div class="card shadow">
+      <div class="card-header bg-success text-white">
+        <h4 class="mb-0">➕ Add New Course</h4>
+      </div>
+      <div class="card-body p-4">
+        <form method="POST" action="/courses/add">
+
+          <div class="row">
+            <div class="col-md-5 mb-3">
+              <label class="form-label">Course Code <span class="text-danger">*</span></label>
+              <input type="text" name="course_code" class="form-control"
+                     placeholder="e.g. CS-301"
+                     value="{{ form_data.get('course_code') or '' }}" required>
+            </div>
+            <div class="col-md-7 mb-3">
+              <label class="form-label">Course Name <span class="text-danger">*</span></label>
+              <input type="text" name="course_name" class="form-control"
+                     placeholder="e.g. Data Structures"
+                     value="{{ form_data.get('course_name') or '' }}" required>
+            </div>
+          </div>
+
+          <div class="row">
+            <div class="col-md-6 mb-3">
+              <label class="form-label">Department <span class="text-danger">*</span></label>
+              <select name="department_id" class="form-select" required>
+                <option value="">-- Select Department --</option>
+                {% for dept in departments %}
+                  <option value="{{ dept[0] }}">{{ dept[1] }}</option>
+                {% endfor %}
+              </select>
+              <!-- Show warning if no departments exist -->
+              {% if not departments %}
+                <div class="form-text text-danger">
+                  No departments found in database.
+                </div>
+              {% endif %}
+            </div>
+            <div class="col-md-3 mb-3">
+              <label class="form-label">Credit Hours <span class="text-danger">*</span></label>
+              <input type="number" name="credit_hours" class="form-control"
+                     placeholder="3" min="1" max="6"
+                     value="{{ form_data.get('credit_hours') or '3' }}" required>
+            </div>
+            <div class="col-md-3 mb-3">
+              <label class="form-label">Semester</label>
+              <input type="text" name="semester" class="form-control"
+                     placeholder="e.g. Fall 2024"
+                     value="{{ form_data.get('semester') or '' }}">
+            </div>
+          </div>
+
+          <div class="d-flex gap-2">
+            <button type="submit" class="btn btn-success">💾 Create Course</button>
+            <a href="/courses" class="btn btn-outline-secondary">Cancel</a>
+          </div>
+
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}

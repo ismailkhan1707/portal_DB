@@ -3,9 +3,6 @@
 
 <h2 class="mb-4">Welcome back, {{ student[1] }} 👋</h2>
 
-<!-- student is a tuple: (id, full_name, email, student_id, password, major, gpa, created_at) -->
-<!--                       [0]   [1]       [2]    [3]         [4]       [5]   [6]  [7]         -->
-
 <div class="row">
   <!-- Profile Card -->
   <div class="col-md-5">
@@ -29,11 +26,10 @@
           </tr>
           <tr>
             <td><strong>Major:</strong></td>
-            <!-- 'or' shows the second value if the first is empty/None -->
             <td>{{ student[5] or 'Not set' }}</td>
           </tr>
           <tr>
-            <td><strong>GPA:</strong></td>
+            <td><strong>CGPA:</strong></td>
             <td>{{ student[6] or 'Not set' }}</td>
           </tr>
           <tr>
@@ -44,22 +40,65 @@
       </div>
     </div>
   </div>
-  
-  <!-- Quick Info Card -->
-  <div class="col-md-4">
-    <div class="card shadow-sm bg-light">
-      <div class="card-body text-center p-4">
-        <h1 class="display-4">🎓</h1>
-        <h5>{{ student[5] or 'Undeclared Major' }}</h5>
-        <p class="text-muted">Current GPA: <strong>{{ student[6] or 'N/A' }}</strong></p>
-      </div>
-    </div>
-  </div>
 </div>
 
-<div class="mt-4 d-flex gap-2">
+<!-- Action Buttons -->
+<div class="mt-4 d-flex gap-2 flex-wrap">
     <a href="/books" class="btn btn-primary">📚 Browse Books</a>
     <a href="/borrow/request" class="btn btn-warning">📤 Request a Book</a>
+    <a href="/courses" class="btn btn-success">📝 Browse & Enroll in Courses</a>
+</div>
+
+<!-- Enrolled Courses -->
+<div class="card shadow-sm mt-4">
+  <div class="card-header bg-success text-white fw-bold">
+    📝 My Enrolled Courses
+  </div>
+  <div class="card-body p-0">
+    <table class="table table-hover mb-0">
+      <thead class="table-dark">
+        <tr>
+          <th>Code</th>
+          <th>Course Name</th>
+          <th>Faculty</th>
+          <th>Department</th>
+          <th>Credits</th>
+          <th>Semester</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for c in enrolled_courses %}
+        <tr>
+          <!-- c tuple:
+          [0]=enrollment_id [1]=course_code [2]=course_name
+          [3]=faculty_name  [4]=department  [5]=credit_hours
+          [6]=semester      [7]=course_id -->
+          <td><span class="badge bg-primary">{{ c[1] }}</span></td>
+          <td><strong>{{ c[2] }}</strong></td>
+          <td>{{ c[3] }}</td>
+          <td>{{ c[4] or '—' }}</td>
+          <td>{{ c[5] }}</td>
+          <td>{{ c[6] or '—' }}</td>
+          <td>
+            <a href="/courses/drop/{{ c[7] }}"
+               class="btn btn-sm btn-danger"
+               onclick="return confirm('Drop this course?')">
+               ❌ Drop
+            </a>
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="7" class="text-center text-muted py-4">
+            You haven't enrolled in any courses yet.
+            <a href="/courses">Browse courses here.</a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
 </div>
 
 {% endblock %}

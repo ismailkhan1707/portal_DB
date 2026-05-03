@@ -209,18 +209,40 @@ def login():
 # ─────────────────────────────────────────────────────────────
 @app.route('/dashboard/student')
 def student_dashboard():
-    # Protect this page — if not logged in, redirect to login
     if 'user_id' not in session or session['role'] != 'student':
         return redirect(url_for('login'))
 
     cur = mysql.connection.cursor()
+
+    # Fetch student info
     cur.execute("SELECT * FROM students WHERE id = %s", (session['user_id'],))
     student = cur.fetchone()
+
+    # Fetch enrolled courses with full details
+    # NEW — uses d.name from departments table
+    cur.execute("""
+        SELECT
+            e.id,
+            c.course_code,
+            c.course_name,
+            f.full_name AS faculty_name,
+            d.name AS department_name,
+            c.credit_hours,
+            c.semester,
+            c.id AS course_id
+        FROM enrollments e
+        JOIN courses c ON e.course_id = c.id
+        JOIN faculty f ON c.faculty_id = f.id
+        LEFT JOIN departments d ON c.department_id = d.id
+        WHERE e.student_id = %s
+        ORDER BY c.course_name
+    """, (session['user_id'],))
+    enrolled_courses = cur.fetchall()
     cur.close()
 
-    # Pass student data to the HTML template
-    return render_template('student_dashboard.html', student=student)
-
+    return render_template('student_dashboard.html',
+                           student=student,
+                           enrolled_courses=enrolled_courses)
 
 # ─────────────────────────────────────────────────────────────
 # ROUTE 6: Faculty Dashboard
@@ -231,15 +253,36 @@ def faculty_dashboard():
         return redirect(url_for('login'))
 
     cur = mysql.connection.cursor()
+
+    # Fetch faculty info
     cur.execute("SELECT * FROM faculty WHERE id = %s", (session['user_id'],))
     faculty = cur.fetchone()
 
-    # Faculty can see all students
-    cur.execute("SELECT full_name, student_id, email, major, gpa FROM students")
-    students = cur.fetchall()
+    # Fetch faculty's courses with enrolled student count
+    cur.execute("""
+        SELECT
+            c.id,
+            c.course_code,
+            c.course_name,
+            d.name AS department_name,
+            c.credit_hours,
+            c.semester,
+            COUNT(e.id) AS enrolled_count
+        FROM courses c
+        LEFT JOIN departments d ON c.department_id = d.id
+        LEFT JOIN enrollments e ON c.id = e.course_id
+        WHERE c.faculty_id = %s
+        GROUP BY c.id
+        ORDER BY c.course_name
+    """, (session['user_id'],))
+    # COUNT(e.id) counts how many enrollments exist for each course
+    # LEFT JOIN means courses with 0 students still show up
+    my_courses = cur.fetchall()
     cur.close()
 
-    return render_template('faculty_dashboard.html', faculty=faculty, students=students)
+    return render_template('faculty_dashboard.html',
+                           faculty=faculty,
+                           my_courses=my_courses)
 
 
 # ─────────────────────────────────────────────────────────────
@@ -1054,6 +1097,172 @@ def reject_request(request_id):
     flash('Request rejected.', 'info')
     return redirect(url_for('manage_requests'))
 
+# ═════════════════════════════════════════════════════════════
+# COURSE MANAGEMENT
+# ═════════════════════════════════════════════════════════════
+
+# ─────────────────────────────────────────────────────────────
+# ROUTE: View All Available Courses (for students to browse)
+# ─────────────────────────────────────────────────────────────
+@app.route('/courses')
+def view_courses():
+    if 'user_id' not in session:
+        flash('Please log in first.', 'danger')
+        return redirect(url_for('login'))
+
+    cur = mysql.connection.cursor()
+
+    # Get all courses with faculty name
+    cur.execute("""
+        SELECT
+            c.id,
+            c.course_code,
+            c.course_name,
+            f.full_name AS faculty_name,
+            d.name AS department_name,
+            c.credit_hours,
+            c.semester
+        FROM courses c
+        JOIN faculty f ON c.faculty_id = f.id
+        LEFT JOIN departments d ON c.department_id = d.id
+        ORDER BY c.course_name
+    """)
+    courses = cur.fetchall()
+
+    # If student, also get their enrolled course IDs
+    # so we can show which ones they already enrolled in
+    enrolled_ids = []
+    if is_student():
+        cur.execute("""
+            SELECT course_id FROM enrollments
+            WHERE student_id = %s
+        """, (session['user_id'],))
+        enrolled_ids = [row[0] for row in cur.fetchall()]
+        # This gives us a simple list like [1, 3, 5]
+        # so we can check "if course[0] in enrolled_ids"
+
+    cur.close()
+    return render_template('view_courses.html',
+                           courses=courses,
+                           enrolled_ids=enrolled_ids)
+
+
+# ─────────────────────────────────────────────────────────────
+# ROUTE: Enroll in a Course (Student only)
+# ─────────────────────────────────────────────────────────────
+@app.route('/courses/enroll/<int:course_id>')
+def enroll_course(course_id):
+    if not is_student():
+        flash('Only students can enroll in courses.', 'danger')
+        return redirect(url_for('view_courses'))
+
+    cur = mysql.connection.cursor()
+    try:
+        cur.execute("""
+            INSERT INTO enrollments (student_id, course_id)
+            VALUES (%s, %s)
+        """, (session['user_id'], course_id))
+        mysql.connection.commit()
+        flash('Successfully enrolled in course!', 'success')
+    except:
+        flash('You are already enrolled in this course.', 'warning')
+    finally:
+        cur.close()
+
+    return redirect(url_for('view_courses'))
+
+
+# ─────────────────────────────────────────────────────────────
+# ROUTE: Drop a Course (Student only)
+# ─────────────────────────────────────────────────────────────
+@app.route('/courses/drop/<int:course_id>')
+def drop_course(course_id):
+    if not is_student():
+        flash('Only students can drop courses.', 'danger')
+        return redirect(url_for('view_courses'))
+
+    cur = mysql.connection.cursor()
+    cur.execute("""
+        DELETE FROM enrollments
+        WHERE student_id = %s AND course_id = %s
+    """, (session['user_id'], course_id))
+    mysql.connection.commit()
+    cur.close()
+
+    flash('Course dropped successfully.', 'info')
+    return redirect(url_for('view_courses'))
+
+
+# ─────────────────────────────────────────────────────────────
+# ROUTE: Add Course (Faculty only)
+# ─────────────────────────────────────────────────────────────
+@app.route('/courses/add', methods=['GET', 'POST'])
+def add_course():
+    if not is_faculty():
+        flash('Only faculty can create courses.', 'danger')
+        return redirect(url_for('view_courses'))
+
+    cur = mysql.connection.cursor()
+
+    # Load departments FIRST before anything else
+    # so it's always available whether GET or POST
+    cur.execute("SELECT id, name FROM departments ORDER BY name")
+    departments = cur.fetchall()
+
+    if request.method == 'POST':
+        course_code   = request.form['course_code'].strip()
+        course_name   = request.form['course_name'].strip()
+        department_id = request.form.get('department_id', '').strip()
+        credit_hours  = request.form['credit_hours'].strip()
+        semester      = request.form['semester'].strip()
+
+        # Validation
+        errors = []
+        if not course_code:
+            errors.append('Course code is required.')
+        if not course_name:
+            errors.append('Course name is required.')
+        if not department_id:
+            errors.append('Please select a department.')
+        if not credit_hours.isdigit() or int(credit_hours) < 1:
+            errors.append('Credit hours must be a positive number.')
+
+        if errors:
+            for e in errors:
+                flash(e, 'danger')
+            cur.close()
+            return render_template('add_course.html',
+                                   form_data=request.form,
+                                   departments=departments)
+
+        try:
+            cur.execute("""
+                INSERT INTO courses
+                    (course_code, course_name, faculty_id,
+                     department_id, credit_hours, semester)
+                VALUES (%s, %s, %s, %s, %s, %s)
+            """, (course_code, course_name, session['user_id'],
+                  department_id, int(credit_hours), semester))
+            mysql.connection.commit()
+            flash(f'Course "{course_name}" created successfully!', 'success')
+            cur.close()
+            return redirect(url_for('faculty_dashboard'))
+        except Exception as e:
+            print("ADD COURSE ERROR:", e)
+            mysql.connection.rollback()
+            if 'Duplicate entry' in str(e):
+                flash('Course code already exists.', 'danger')
+            else:
+                flash(f'Error: {str(e)}', 'danger')
+            cur.close()
+            return render_template('add_course.html',
+                                   form_data=request.form,
+                                   departments=departments)
+
+    cur.close()
+    return render_template('add_course.html',
+                           form_data={},
+                           departments=departments)
 # ─────────────────────────────────────────────────────────────
 # START THE APP
 # ─────────────────────────────────────────────────────────────

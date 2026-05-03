@@ -3,54 +3,68 @@
 
 <h2 class="mb-4">Faculty Dashboard — {{ faculty[1] }} 👨‍🏫</h2>
 
-<!-- Faculty profile -->
+<!-- Profile Card -->
 <div class="card shadow-sm mb-4">
   <div class="card-header bg-secondary text-white fw-bold">My Information</div>
   <div class="card-body">
     <p><strong>Name:</strong> {{ faculty[1] }}</p>
     <p><strong>Email:</strong> {{ faculty[2] }}</p>
     <p><strong>Employee ID:</strong> {{ faculty[3] }}</p>
-    <p><strong>Title:</strong> {{ faculty[6] or 'Not set' }}</p>
+    <p class="mb-0"><strong>Title:</strong> {{ faculty[6] or 'Not set' }}</p>
   </div>
 </div>
 
-<!-- Student Records Table -->
+<!-- Action Buttons -->
+<div class="mt-2 mb-4 d-flex gap-2 flex-wrap">
+    <a href="/books" class="btn btn-primary">📚 Browse Books</a>
+    <a href="/borrow/request" class="btn btn-warning">📤 Request a Book</a>
+    <a href="/courses/add" class="btn btn-success">➕ Add Course</a>
+    <a href="/courses" class="btn btn-outline-success">📝 View All Courses</a>
+</div>
+
+<!-- My Courses & Students -->
 <div class="card shadow-sm">
-  <div class="card-header bg-primary text-white fw-bold">
-    📊 All Registered Students ({{ students|length }} total)
+  <div class="card-header bg-secondary text-white fw-bold">
+    📋 My Courses & Enrolled Students
   </div>
-  <div class="card-body">
-    <table class="table table-striped table-hover">
+  <div class="card-body p-0">
+    <table class="table table-hover mb-0">
       <thead class="table-dark">
         <tr>
-          <th>Name</th>
-          <th>Student ID</th>
-          <th>Email</th>
-          <th>Major</th>
-          <th>GPA</th>
+          <th>Code</th>
+          <th>Course Name</th>
+          <th>Department</th>
+          <th>Credits</th>
+          <th>Semester</th>
+          <th>Enrolled</th>
         </tr>
       </thead>
       <tbody>
-        {% for s in students %}
+        {% for c in my_courses %}
         <tr>
-          <td>{{ s[0] }}</td>  <!-- full_name -->
-          <td>{{ s[1] }}</td>  <!-- student_id -->
-          <td>{{ s[2] }}</td>  <!-- email -->
-          <td>{{ s[3] or '—' }}</td>  <!-- major -->
-          <td>{{ s[4] or '—' }}</td>  <!-- gpa -->
+          <!-- c tuple:
+          [0]=id [1]=course_code [2]=course_name
+          [3]=department [4]=credit_hours [5]=semester [6]=enrolled_count -->
+          <td><span class="badge bg-secondary">{{ c[1] }}</span></td>
+          <td><strong>{{ c[2] }}</strong></td>
+          <td>{{ c[3] or '—' }}</td>
+          <td>{{ c[4] }}</td>
+          <td>{{ c[5] or '—' }}</td>
+          <td>
+            <span class="badge bg-primary">{{ c[6] }} students</span>
+          </td>
         </tr>
         {% else %}
-          <!-- This shows if no students are registered yet -->
-          <tr><td colspan="5" class="text-center text-muted">No students registered yet.</td></tr>
+        <tr>
+          <td colspan="6" class="text-center text-muted py-4">
+            You haven't created any courses yet.
+            <a href="/courses/add">Add your first course!</a>
+          </td>
+        </tr>
         {% endfor %}
       </tbody>
     </table>
   </div>
-</div>
-
-<div class="mt-4 d-flex gap-2">
-    <a href="/books" class="btn btn-primary">📚 Browse Books</a>
-    <a href="/borrow/request" class="btn btn-warning">📤 Request a Book</a>
 </div>
 
 {% endblock %}
