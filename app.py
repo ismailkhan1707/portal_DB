@@ -248,9 +248,8 @@ def faculty_dashboard():
 @app.route('/logout')
 def logout():
     session.clear()
-    # Removes all session data — user is now logged out
     flash('You have been logged out.', 'info')
-    return redirect(url_for('login'))
+    return redirect(url_for('index'))
 
 # ─────────────────────────────────────────────────────────────
 # ROUTE: Librarian Registration

@@ -9,17 +9,17 @@
 </head>
 <body>
 
-<!-- Navigation Bar -->
 <nav class="navbar navbar-dark bg-primary px-4">
-    <span class="navbar-brand fw-bold">🎓 university Portal</span>
+    <div class="d-flex align-items-center gap-3">
+        <span class="navbar-brand fw-bold">🎓 University Portal</span>
+        <!-- Home button always visible -->
+        <a href="/logout" class="btn btn-outline-light btn-sm">🏠 Home</a>
+    </div>
     <div>
-        <!-- session is available in all templates automatically -->
         {% if session.user_id %}
-            <!-- Show this if someone is logged in -->
             <span class="text-white me-3">Hello, {{ session.user_name }}</span>
             <a href="/logout" class="btn btn-outline-light btn-sm">Logout</a>
         {% else %}
-            <!-- Show this if nobody is logged in -->
             <a href="/login" class="btn btn-outline-light btn-sm">Login</a>
         {% endif %}
     </div>
