@@ -1,0 +1,149 @@
+
+<style>
+#erd svg { width: 100% !important; }
+#erd svg .er { font-family: var(--font-sans) !important; }
+</style>
+<div id="erd" style="padding: 1rem 0;"></div>
+<script type="module">
+import mermaid from 'https://esm.sh/mermaid@11/dist/mermaid.esm.min.mjs';
+const dark = matchMedia('(prefers-color-scheme: dark)').matches;
+await document.fonts.ready;
+mermaid.initialize({
+  startOnLoad: false,
+  theme: 'base',
+  fontFamily: '"Anthropic Sans", sans-serif',
+  themeVariables: {
+    darkMode: dark,
+    fontSize: '13px',
+    fontFamily: '"Anthropic Sans", sans-serif',
+    lineColor: dark ? '#9c9a92' : '#73726c',
+    textColor: dark ? '#c2c0b6' : '#3d3d3a',
+    primaryColor: dark ? '#2a2a40' : '#eeedfe',
+    primaryBorderColor: dark ? '#534AB7' : '#534AB7',
+    primaryTextColor: dark ? '#c2c0b6' : '#26215C',
+  },
+});
+const diagram = `erDiagram
+  departments {
+    int id PK
+    varchar name
+  }
+  students {
+    int id PK
+    varchar full_name
+    varchar email
+    varchar student_id
+    varchar password
+    varchar major
+    decimal gpa
+    timestamp created_at
+  }
+  faculty {
+    int id PK
+    varchar full_name
+    varchar email
+    varchar employee_id
+    varchar password
+    int department_id FK
+    varchar title
+    timestamp created_at
+  }
+  librarians {
+    int id PK
+    varchar full_name
+    varchar email
+    varchar librarian_id
+    varchar password
+    timestamp created_at
+  }
+  books {
+    int book_id PK
+    varchar title
+    varchar author
+    varchar category
+    varchar isbn
+    varchar publisher
+    int year
+    int quantity
+    int available
+    timestamp created_at
+  }
+  library_members {
+    int id PK
+    int user_id
+    enum user_type
+    timestamp member_since
+  }
+  issued_books {
+    int id PK
+    int member_id FK
+    int book_id FK
+    date issue_date
+    date due_date
+    boolean returned
+    int issued_by FK
+    timestamp created_at
+  }
+  borrow_requests {
+    int id PK
+    int member_id FK
+    int book_id FK
+    date request_date
+    enum status
+    timestamp created_at
+  }
+  courses {
+    int id PK
+    varchar course_code
+    varchar course_name
+    int faculty_id FK
+    int department_id FK
+    int credit_hours
+    varchar semester
+    timestamp created_at
+  }
+  enrollments {
+    int id PK
+    int student_id FK
+    int course_id FK
+    timestamp enrolled_at
+  }
+
+  departments ||--o{ faculty : "belongs to"
+  departments ||--o{ courses : "categorised under"
+  faculty ||--o{ courses : "teaches"
+  students ||--o{ enrollments : "enrolls in"
+  courses ||--o{ enrollments : "has"
+  library_members ||--o{ issued_books : "borrows"
+  books ||--o{ issued_books : "issued as"
+  librarians ||--o{ issued_books : "processes"
+  library_members ||--o{ borrow_requests : "requests"
+  books ||--o{ borrow_requests : "requested as"
+`;
+const { svg } = await mermaid.render('erd-svg', diagram);
+document.getElementById('erd').innerHTML = svg;
+
+document.querySelectorAll('#erd svg .node').forEach(node => {
+  const firstPath = node.querySelector('path[d]');
+  if (!firstPath) return;
+  const d = firstPath.getAttribute('d');
+  const nums = d.match(/-?[\d.]+/g)?.map(Number);
+  if (!nums || nums.length < 8) return;
+  const xs = [nums[0], nums[2], nums[4], nums[6]];
+  const ys = [nums[1], nums[3], nums[5], nums[7]];
+  const x = Math.min(...xs), y = Math.min(...ys);
+  const w = Math.max(...xs) - x, h = Math.max(...ys) - y;
+  const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+  rect.setAttribute('x', x); rect.setAttribute('y', y);
+  rect.setAttribute('width', w); rect.setAttribute('height', h);
+  rect.setAttribute('rx', '8');
+  for (const a of ['fill', 'stroke', 'stroke-width', 'class', 'style']) {
+    if (firstPath.hasAttribute(a)) rect.setAttribute(a, firstPath.getAttribute(a));
+  }
+  firstPath.replaceWith(rect);
+});
+
+document.querySelectorAll('#erd svg .row-rect-odd path, #erd svg .row-rect-even path').forEach(p => {
+  p.setAttribute('stroke', 'none');
+});
+</script>
